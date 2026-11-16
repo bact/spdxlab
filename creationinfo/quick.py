@@ -1,5 +1,5 @@
-# SPDX-FileCopyrightText: 2026 SPDX contributors
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Arthit Suriyawongkul
+# SPDX-License-Identifier: CC0-1.0
 
 """Merge issue, shown with published files only: SPDX 3.0.1 + 3.1-RC1 ontologies.
 

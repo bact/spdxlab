@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2026 Arthit Suriyawongkul
+SPDX-License-Identifier: CC0-1.0
+-->
+
 # SPDX 3: mutable CreationInfo of spec-defined individuals
 
 Reproduction for spdx/spdx-3-model#1465 and the PRs that fix it:

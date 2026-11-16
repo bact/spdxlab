@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# SPDX-FileCopyrightText: 2026 SPDX contributors
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Arthit Suriyawongkul
+# SPDX-License-Identifier: CC0-1.0
 # Build ontologies for the CreationInfo reproduction.
 # usage: build.sh WORKDIR   (needs git, python3, curl)
 set -euo pipefail

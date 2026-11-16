@@ -1,5 +1,5 @@
-# SPDX-FileCopyrightText: 2026 SPDX contributors
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Arthit Suriyawongkul
+# SPDX-License-Identifier: CC0-1.0
 
 """Reproduce the issues caused by mutable CreationInfo of spec-defined individuals.
 
