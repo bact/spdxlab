@@ -1,7 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Arthit Suriyawongkul
+# SPDX-FileType: SOURCE
 # SPDX-License-Identifier: CC0-1.0
 
-"""Merge issue, shown with published files only: SPDX 3.0.1 + 3.1-RC1 ontologies.
+"""Merge issue, shown with published files only: SPDX 3.0.1, 3.1-RC1 and 3.1-dev ontologies.
 
 usage: python quick.py [FIXED_TTL]   (needs: pip install rdflib pyshacl)
 FIXED_TTL: optional ontology built with the fix, to show the same merge passing.
@@ -15,14 +16,18 @@ from pyshacl import validate
 from rdflib import Graph, URIRef
 from rdflib.namespace import RDF, RDFS
 
-URLS = {"3.0.1": "https://spdx.org/rdf/3.0.1/spdx-model.ttl", "3.1-RC1": "https://spdx.org/rdf/3.1/spdx-model.ttl"}
+URLS = {
+    "3.0.1": "https://spdx.org/rdf/3.0.1/spdx-model.ttl",
+    "3.1-RC1": "https://spdx.org/rdf/3.1/spdx-model.ttl",  # redirects to the v3.1-RC1 build
+    "3.1-dev": "https://spdx.github.io/spdx-spec/v3.1-dev/rdf/spdx-model.ttl",  # rebuilt from develop
+}
 CORE = "https://spdx.org/rdf/3/terms/Core/"
 CREATION_INFO, CI_CLASS = URIRef(CORE + "creationInfo"), URIRef(CORE + "CreationInfo")
 TERMS = re.compile(r"^https://spdx\.org/rdf/3\.[0-9.]+/terms/")
 
 
 def load(src):
-    # versioned term IRIs (3.0.1/terms/, 3.1/terms/) -> one canonical form, as proposed for SPDX 3.1
+    # versioned term IRIs (3.0.1/terms/, 3.1/terms/) -> canonical 3/terms/, as 3.1-dev already uses
     if src.startswith("https://"):
         with urllib.request.urlopen(src) as r:
             src = r.read()
@@ -56,21 +61,22 @@ def creation_info_violations(data, shapes):
 if len(sys.argv) > 1:
     URLS["fixed"] = sys.argv[1]
 g = {v: load(u) for v, u in URLS.items()}
-shapes = g["3.1-RC1"]
+shapes = g["3.1-dev"]
 
 print("1. NoneElement's CreationInfo, as published")
 for v, graph in g.items():
     ci = graph.value(URIRef(CORE + "NoneElement"), CREATION_INFO)
     print(f"   {v:8} {ci}  specVersion={graph.value(ci, URIRef(CORE + 'specVersion'))}  created={graph.value(ci, URIRef(CORE + 'created'))}")
 
-merged = individuals(g["3.0.1"]) + individuals(g["3.1-RC1"])
-print("\n2. Merged: creationInfo values per individual (Element.creationInfo allows exactly 1)")
+merged = individuals(g["3.0.1"]) + individuals(g["3.1-dev"])
+print("\n2. Merged 3.0.1 + 3.1-dev: creationInfo values per individual (Element.creationInfo allows exactly 1)")
 for ind in sorted(set(merged.subjects(CREATION_INFO, None))):
     cis = sorted(str(c).rsplit("/", 2)[-2] for c in merged.objects(ind, CREATION_INFO))
     print(f"   {str(ind).rsplit('/', 1)[-1]:20} {len(cis)}  ({', '.join(cis)})")
 
-print("\n3. SHACL violations on creationInfo (shapes from 3.1-RC1)")
-cases = [("3.0.1 alone", individuals(g["3.0.1"])), ("3.1-RC1 alone", individuals(g["3.1-RC1"])), ("3.0.1 + 3.1-RC1", merged)]
+print("\n3. SHACL violations on creationInfo (shapes from 3.1-dev)")
+cases = [(f"{v} alone", individuals(g[v])) for v in URLS if v != "fixed"]
+cases += [("3.0.1 + 3.1-RC1", individuals(g["3.0.1"]) + individuals(g["3.1-RC1"])), ("3.0.1 + 3.1-dev", merged)]
 if "fixed" in g:
     cases.append(("3.0.1 + fixed", individuals(g["3.0.1"]) + individuals(g["fixed"])))
 for label, data in cases:

@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Arthit Suriyawongkul
+# SPDX-FileType: SOURCE
 # SPDX-License-Identifier: CC0-1.0
 
 """Reproduce the issues caused by mutable CreationInfo of spec-defined individuals.
@@ -112,3 +113,19 @@ for name in ("before", "after", "after-edit", "after-edit-by"):
     r = subprocess.run([sys.executable, script, W / f"{name}.ttl"], capture_output=True, text=True)
     errs = [ln for ln in r.stdout.splitlines() if ln.startswith("error:")]
     print(f"   {name:14} {'FAIL' if r.returncode else 'pass'}  {len(errs)} error(s)")
+
+# 7. the same problem at every release: 3.0.1 -> 3.1 -> 3.2
+print("\n== 7. Release series 3.0.1 -> 3.1 -> 3.2 (3.1 adds RedactedElement, 3.2 adds WithheldElement)")
+print("   x = more than one creationInfo; Element.creationInfo allows exactly 1")
+for label, r31, r32 in [("before", "before-new", "before-32"), ("after", "after-new", "after-32")]:
+    g = {"3.0.1": v301, "3.1": load(r31), "3.2": load(r32)}
+    print(f"   {label}:")
+    for combo in (("3.0.1", "3.1"), ("3.1", "3.2"), ("3.0.1", "3.1", "3.2")):
+        m = Graph()
+        for v in combo:
+            m += g[v]
+        ok, n, _ = shacl(m, g[combo[-1]])
+        print(f"     {' + '.join(combo)}: SHACL violations {n}")
+        for s in sorted(set(m.subjects(P["creationInfo"], None)), key=lambda x: str(x).rsplit("/", 1)[-1]):
+            src = sorted(str(c).rsplit("/", 2)[-2] for c in m.objects(s, P["creationInfo"]))
+            print(f"       {'x' if len(src) > 1 else ' '} {str(s).rsplit('/', 1)[-1]:20} creationInfo from {', '.join(src)}")

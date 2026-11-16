@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 Arthit Suriyawongkul
+# SPDX-FileType: SOURCE
 # SPDX-License-Identifier: CC0-1.0
 # Build ontologies for the CreationInfo reproduction.
 # usage: build.sh WORKDIR   (needs git, python3, curl)
@@ -61,4 +62,24 @@ sed -e 's/SpdxOrganization/NoAssertionAgent/g' -e 's/^- type: Organization$/- ty
   -e 's|^- createdBy: /Core/NoAssertionAgent$|- createdBy: /Core/SpdxOrganization|' \
   model-after/model/Core/Individuals/SpdxOrganization.md > model-after-edit-by/model/Core/Individuals/NoAssertionAgent.md
 gen parser-after model-after-edit-by after-edit-by
-echo "built: 301.ttl before.ttl after.ttl before-new.ttl after-new.ttl after-edit.ttl after-edit-by.ttl"
+
+# release series 3.1 -> 3.2 (issue 7): a 3.2 build adds WithheldElement
+add_32() {  # model-dir extra-metadata
+  rm -rf "$1-32"; cp -r "$1-new" "$1-32"
+  f="$1-32/model/Core/Individuals/WithheldElement.md"
+  sed -e 's/RedactedElement/WithheldElement/g' -e '/^- specVersion:/d' -e '/^- created:/d' \
+    "$1-new/model/Core/Individuals/RedactedElement.md" > "$f"
+  [ -z "$2" ] || sed -i "s/^- type: IndividualElement$/- type: IndividualElement\n$2/" "$f"
+}
+add_32 model-before ""
+add_32 model-after '- specVersion: 3.2\n- created: 2027-01-22T00:00:00Z'
+# without the fix, a 3.2 release bumps the hard-wired values, as 24339e1 did for 3.1
+rm -rf parser-before-32; cp -r parser-before parser-before-32
+sed -i -e 's|rdf/3.1/creationInfo_|rdf/3.2/creationInfo_|' -e 's|Literal("3.1")|Literal("3.2")|' \
+  -e 's|2026-01-23T03:01:00Z|2027-01-22T00:00:00Z|' parser-before-32/spec_parser/rdf.py
+[ "$(grep -c -e 'rdf/3.2/creationInfo_' -e 'Literal("3.2")' -e '2027-01-22T00:00:00Z' parser-before-32/spec_parser/rdf.py)" = 3 ] \
+  || { echo "3.2 bump did not apply"; exit 1; }
+gen parser-before-32 model-before-32 before-32
+gen parser-after     model-after-32  after-32
+
+echo "built: 301.ttl before.ttl after.ttl before-new.ttl after-new.ttl after-edit.ttl after-edit-by.ttl before-32.ttl after-32.ttl"
