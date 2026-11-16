@@ -1,7 +1,8 @@
-<!--
+---
 SPDX-FileCopyrightText: 2026 Arthit Suriyawongkul
+SPDX-FileType: DOCUMENTATION
 SPDX-License-Identifier: CC0-1.0
--->
+---
 
 # Experiments on SPDX
 
