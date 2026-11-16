@@ -1,4 +1,4 @@
-# SPDX lab
+# Not an SPDX Lab
 
 Reproductions and experiments for issues in the SPDX specification, model and
 tooling. Each folder is self-contained, with its own README, scripts and
