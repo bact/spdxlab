@@ -2,3 +2,6 @@ work/
 venv/
 __pycache__/
 context-vocab/roundtrip-out/
+shacl-data-only/variants/
+shacl-data-only/jena/lib/
+shacl-data-only/jena/*.class

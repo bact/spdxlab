@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 Arthit Suriyawongkul
+# SPDX-License-Identifier: CC0-1.0
+#
+# Invalid: ex:BadRel "to" points at a CreationInfo, which is not an Element.
+# The CreationInfo has an IRI here, so only the class check can catch it.
+# Expected: one result, on BadRel "to".
+
+@prefix c: <https://spdx.org/rdf/3/terms/Core/> .
+@prefix s: <https://spdx.org/rdf/3/terms/Software/> .
+@prefix r: <https://spdx.org/rdf/3/terms/Core/RelationshipType/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix ex: <https://example.org/doc/> .
+
+ex:Person a c:Person ; c:creationInfo ex:ci ; c:name "Jane Doe" .
+ex:ci a c:CreationInfo ;
+    c:specVersion "3.1" ;
+    c:created "2026-11-18T00:00:00Z"^^xsd:dateTimeStamp ;
+    c:createdBy ex:Person .
+
+ex:Pkg a s:Package ; c:creationInfo ex:ci ; c:name "pkg" .
+ex:BadRel a c:Relationship ; c:creationInfo ex:ci ;
+    c:from ex:Pkg ; c:to ex:ci ; c:relationshipType r:contains .
