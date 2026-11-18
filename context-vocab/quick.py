@@ -6,7 +6,7 @@
 
 usage: python quick.py [NAME=CONTEXT ...]   (needs: pip install rdflib)
 CONTEXT: URL or path of spdx-context.jsonld; defaults to the published 3.0.1 and 3.1-dev ones.
-Each context is also checked with class-valued terms switched to "@type": "@id" (spec-parser#205).
+Each context is also checked with class-valued terms switched to "@type": "@id" (https://github.com/spdx/spec-parser/pull/205).
 """
 
 import json
@@ -21,7 +21,7 @@ URLS = {
 }
 BASE = "https://example.org/doc/"
 # an element id that is also a context term name
-DOC = {"@id": "_:ci", "type": "CreationInfo", "createdBy": ["Tool", "https://example.org/agent/1"]}
+DOC = {"@id": "_:ci", "type": "CreationInfo", "createdBy": "Tool"}
 
 
 def load(src):
@@ -54,5 +54,4 @@ for name, src in srcs.items():
     print(f"{name}: {len(terms)} class-valued terms typed @vocab")
     for label, c in (("as published", ctx), ("with @id", fixed(ctx))):
         key, values = created_by(c)
-        tool = next(v for v in values if v.endswith("/Tool"))
-        print(f"   {label:13} {key} \"Tool\" -> {tool}")
+        print(f"   {label:13} {key} \"Tool\" -> {values[0]}")
