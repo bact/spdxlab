@@ -90,8 +90,8 @@ should point to `https://example.org/doc/Person`.
   `Core/extension`, which is not a `ProfileIdentifierType`. A valid document
   is rejected only because of the context.
 - `relative-ref-matches-term.json` fails the JSON Schema on purpose: the
-  schema allows only absolute IRIs (`^(?!_:).+:.+`) or blank nodes as ids and references. It is
-  still valid JSON-LD that any RDF tool may produce or consume, and SHACL
+  schema allows only absolute IRIs (`^(?!_:).+:.+`) or blank nodes as ids
+  and references. It is still valid JSON-LD that any RDF tool may produce or consume, and SHACL
   cannot catch the relative `spdxId`: `spdxId` is an alias of `@id`, so it is
   resolved before the RDF graph exists.
 
