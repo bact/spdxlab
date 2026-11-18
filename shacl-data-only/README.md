@@ -10,8 +10,8 @@ Shows why SPDX 3 SHACL validation needs the class hierarchy merged into
 the data, and compares ways to remove that need.
 Builds on
 [spdx/spec-parser#221](https://github.com/spdx/spec-parser/pull/221).
-Fix: bact/spec-parser branch
-[`class-check-data-only`](https://github.com/bact/spec-parser/tree/class-check-data-only).
+Fix: [bact/spec-parser#22](https://github.com/bact/spec-parser/pull/22)
+(branch `class-check-data-only`).
 
 ## In short
 
