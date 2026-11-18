@@ -140,6 +140,82 @@ The same documents and contexts give identical results with
 Apache Jena 5.2.0 (Titanium JSON-LD 1.4.1, Java) and jsonld.js 8.3.3
 (JavaScript): this is how JSON-LD 1.1 works, not a quirk of one library.
 
+## Round trip with standard tools
+
+Does a real pipeline produce such strings? [roundtrip.py](roundtrip.py)
+starts from a valid SPDX 3.0.1 file,
+[roundtrip-start.json](roundtrip-start.json) (absolute ids only), and uses
+only standard steps:
+
+1. `step1.json`: the start file. spdx3-validate: valid.
+2. `step2.ttl`: read as RDF with rdflib, saved as Turtle (as any RDF store
+   would keep it).
+3. `step3.json`: written as JSON-LD again with pyld: from RDF, then compacted
+   with the SPDX context and the base it is published at,
+   `https://example.org/doc/`. jsonld.js gives the same output.
+4. `step4.json`: a tool that edits the file as plain JSON (as the spec's
+   "Parsing JSON-LD as JSON" section allows) adds an `Annotation` about the
+   Person, copying its `spdxId` as written into `subject`.
+
+```sh
+venv/bin/pip install pyld spdx3-validate
+venv/bin/python roundtrip.py   # writes roundtrip-out/<context>/step*.json
+```
+
+Output (2026-11-18):
+
+```text
+3.0.1:
+  step1.json  valid SPDX 3 JSON (absolute ids)
+              spdx3-validate: valid
+  step2.ttl   RDF (Turtle)
+  step3.json  JSON-LD again; same RDF as step1: True
+              spdx3-validate: INVALID 'Person' does not match '^(?!_:).+:.+'
+  step4.json  Annotation subject 'Person' -> spdx:Core/Person
+fixed:
+  step1.json  valid SPDX 3 JSON (absolute ids)
+              spdx3-validate: not run
+  step2.ttl   RDF (Turtle)
+  step3.json  JSON-LD again; same RDF as step1: True
+              spdx3-validate: not run
+  step4.json  Annotation subject 'Person' -> https://example.org/doc/Person
+```
+
+`step3.json` with the published 3.0.1 context:
+
+```json
+{
+  "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+  "@graph": [
+    {
+      "spdxId": "_:n…",
+      "type": "CreationInfo",
+      "created": "2026-11-18T00:00:00Z",
+      "createdBy": "https://example.org/doc/Person",
+      "spdx:Core/specVersion": "3.0.1"
+    },
+    {
+      "spdxId": "Person",
+      "type": "Person",
+      "creationInfo": "_:n…",
+      "spdx:Core/name": "Jane Doe"
+    }
+  ]
+}
+```
+
+What it shows:
+
+- Step 3 is valid JSON-LD: its canonical RDF (URDNA2015) is identical to
+  step 1. It is not valid SPDX 3 JSON.
+- Standard producers write relative ids: `"spdxId": "Person"`.
+- With the published context the same element is `"Person"` as an id but
+  `"https://example.org/doc/Person"` as a reference: the context cannot
+  express a relative reference, so the compactor avoids one. With the fixed
+  context both are `"Person"`.
+- Step 4: the copied `"Person"` becomes the class `Core/Person` with the
+  published context, and the Person element with the fixed one.
+
 ## The fix
 
 `fixed/spdx-context.jsonld` is built by bact/spec-parser `type-id-class`
@@ -170,3 +246,16 @@ from spdx/spdx-3-model 44542aa (develop 25267e7 fails earlier, on
   SPDX namespace
   ([spdx/spdx-3-model#1167](https://github.com/spdx/spdx-3-model/issues/1167)
   point 2); not covered here.
+- Step 3 also fails the SPDX JSON Schema for reasons this fix does not
+  touch. Standard JSON-LD output differs from SPDX 3 JSON in three more ways:
+  - the blank node id is written as `spdxId` (the alias of `@id`), but SPDX
+    expects `@id` for blank nodes and `spdxId` only for IRIs;
+  - a single value is written as a string (`"createdBy": "…"`), but the
+    schema requires an array;
+  - string properties are written as `spdx:Core/name`, not `name`: the
+    context types them as `xsd:string`, but JSON-LD's from-RDF algorithm
+    omits `xsd:string` (the RDF 1.1 default), so the `name` term no longer
+    matches.
+
+  So "SPDX 3 JSON is a strict subset of JSON-LD" means output from a standard
+  JSON-LD producer is usually not valid SPDX 3 JSON, even when the data is.
