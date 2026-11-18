@@ -88,6 +88,22 @@ Output (contexts from spdx/spdx-spec `gh-pages`, 2026-11-18):
 Absolute IRIs, and relative ids that are not term names (e.g. `"agent-1"`),
 resolve the same either way; only ids that match a term name change meaning.
 
+## Validity
+
+`example.json` is not a valid SPDX 3 document, on purpose. The SPDX 3 JSON
+Schema allows only absolute IRIs (`^(?!_:).+:.+`) or blank nodes (`_:…`) as
+`spdxId` and as references, so both `"Person"` strings fail it
+(spdx3-validate 0.0.7, SPDX 3.0.1). With absolute IRIs the document is valid,
+and `@vocab` and `@id` then give the same result.
+
+It is still valid JSON-LD, and SPDX data is RDF: the spec allows any RDF
+serialization, and says SPDX 3 JSON may be parsed with standard JSON-LD
+libraries. A generic JSON-LD or RDF consumer reads such a document as shown
+above. SHACL cannot catch the relative `spdxId`: `spdxId` is an alias of
+`@id`, so it is resolved against the base before the RDF graph exists. Here
+SHACL fails only because `createdBy` points to the class `…/Core/Person`,
+which is not an `Agent`.
+
 ## Notes
 
 - A term is counted as class-valued when it has `"@type": "@vocab"` and no
