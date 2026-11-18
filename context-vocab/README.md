@@ -25,20 +25,37 @@ With the published context, these processors read some strings differently
 from what SPDX means. Both cases have one cause: a string value is first
 matched against the top-level context terms.
 
-1. **Element references.** The 93 class-valued properties (`createdBy`,
-   `from`, `to`, `element`, …) are typed `"@type": "@vocab"`. A reference
-   whose id is also a term name, such as `"Person"`, expands to the SPDX class
-   `…/Core/Person` instead of the element. JSON-LD 1.1 §4.2.3 warns about
-   this: IRI values are "typically considered to be document-relative".
-2. **Enumeration values.** An entry named like a top-level term expands to
+1. **Enumeration values.** An entry named like a top-level term expands to
    that term: `profileConformance: "extension"` gives the property
    `…/Core/extension`, not `…/ProfileIdentifierType/extension`. Same for
    `relationshipType: "createdBy"` and `externalIdentifierType:
    "requirementUID"` in 3.1-dev.
+   A schema-valid document is affected.
+2. **Element references.** The 93 class-valued properties (`createdBy`,
+   `from`, `to`, `element`, …) are typed `"@type": "@vocab"`. A reference
+   whose id is also a term name, such as `"Person"`, expands to the SPDX class
+   `…/Core/Person` instead of the element. JSON-LD 1.1 §4.2.3 warns about
+   this: IRI values are "typically considered to be document-relative".
+   This needs a relative id, which the SPDX JSON Schema rejects; it is still
+   valid JSON-LD that RDF tools may produce.
 
 ## The example documents
 
 Both use base `https://example.org/doc/`.
+
+[example-enum.json](example-enum.json): an SpdxDocument that conforms to the
+`core` and `extension` profiles; `profileConformance` should give two
+`ProfileIdentifierType` entries.
+
+```json
+{
+  "type": "SpdxDocument",
+  "spdxId": "https://example.org/doc/SpdxDocument",
+  "creationInfo": "_:creationinfo",
+  "profileConformance": ["core", "extension"],
+  "rootElement": ["https://example.org/doc/Person"]
+}
+```
 
 [example.json](example.json): `createdBy` refers to the `Person` element by
 its relative `spdxId`, so it should point to `https://example.org/doc/Person`.
@@ -61,20 +78,6 @@ its relative `spdxId`, so it should point to `https://example.org/doc/Person`.
       "creationInfo": "_:creationinfo"
     }
   ]
-}
-```
-
-[example-enum.json](example-enum.json): an SpdxDocument that conforms to the
-`core` and `extension` profiles; `profileConformance` should give two
-`ProfileIdentifierType` entries.
-
-```json
-{
-  "type": "SpdxDocument",
-  "spdxId": "https://example.org/doc/SpdxDocument",
-  "creationInfo": "_:creationinfo",
-  "profileConformance": ["core", "extension"],
-  "rootElement": ["https://example.org/doc/Person"]
 }
 ```
 
@@ -113,23 +116,23 @@ Output (2026-11-18):
 
 ```text
 3.0.1:
-  example.json createdBy (rdflib, pyld agree)
-    spdx:Core/Person                                   WRONG
   example-enum.json profileConformance (rdflib, pyld agree)
     spdx:Core/ProfileIdentifierType/core               ok
     spdx:Core/extension                                WRONG
+  example.json createdBy (rdflib, pyld agree)
+    spdx:Core/Person                                   WRONG
 3.1-dev:
-  example.json createdBy (rdflib, pyld agree)
-    spdx:Core/Person                                   WRONG
   example-enum.json profileConformance (rdflib, pyld agree)
     spdx:Core/ProfileIdentifierType/core               ok
     spdx:Core/extension                                WRONG
-fixed:
   example.json createdBy (rdflib, pyld agree)
-    https://example.org/doc/Person                     ok
+    spdx:Core/Person                                   WRONG
+fixed:
   example-enum.json profileConformance (rdflib, pyld agree)
     spdx:Core/ProfileIdentifierType/core               ok
     spdx:Core/ProfileIdentifierType/extension          ok
+  example.json createdBy (rdflib, pyld agree)
+    https://example.org/doc/Person                     ok
 ```
 
 The same documents and contexts give identical results with
