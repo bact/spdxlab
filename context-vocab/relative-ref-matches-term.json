@@ -1,0 +1,18 @@
+{
+  "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+  "@graph": [
+    {
+      "type": "CreationInfo",
+      "@id": "_:creationinfo",
+      "specVersion": "3.0.1",
+      "created": "2026-11-18T00:00:00Z",
+      "createdBy": ["Person"]
+    },
+    {
+      "type": "Person",
+      "spdxId": "Person",
+      "name": "Jane Doe",
+      "creationInfo": "_:creationinfo"
+    }
+  ]
+}
