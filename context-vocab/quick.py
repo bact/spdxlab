@@ -2,12 +2,11 @@
 # SPDX-FileType: SOURCE
 # SPDX-License-Identifier: CC0-1.0
 
-"""Read example.json with a JSON-LD context and show what createdBy points to.
+"""Read the example SPDX 3 JSON files with each JSON-LD context and show what the strings expand to.
 
-usage: python quick.py [NAME=CONTEXT ...]   (needs: pip install rdflib)
-CONTEXT: URL or path of spdx-context.jsonld; defaults to the published 3.0.1 and 3.1-dev ones.
-Each context is used as published, then with class-valued terms typed "@id"
-(https://github.com/spdx/spec-parser/pull/205).
+usage: python quick.py [NAME=CONTEXT ...]   (needs: pip install rdflib; pyld is also used if installed)
+CONTEXT: URL or path of spdx-context.jsonld; defaults to published 3.0.1, published 3.1-dev
+and fixed/spdx-context.jsonld (built from bact/spec-parser branch type-id-class).
 """
 
 import json
@@ -15,14 +14,20 @@ import sys
 import urllib.request
 from pathlib import Path
 
-from rdflib import RDF, Graph
+from rdflib import Graph
 
-URLS = {
+HERE = Path(__file__).parent
+CONTEXTS = {
     "3.0.1": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
     "3.1-dev": "https://spdx.github.io/spdx-spec/v3.1-dev/rdf/spdx-context.jsonld",
+    "fixed": str(HERE / "fixed" / "spdx-context.jsonld"),
 }
 BASE = "https://example.org/doc/"
-EXAMPLE = json.loads((Path(__file__).parent / "example.json").read_text())
+# file, property, expected IRI ending of each value
+CASES = [
+    ("example.json", "createdBy", ["doc/Person"]),
+    ("example-enum.json", "profileConformance", ["ProfileIdentifierType/core", "ProfileIdentifierType/extension"]),
+]
 
 
 def load(src):
@@ -33,27 +38,41 @@ def load(src):
         return json.load(f)["@context"]
 
 
-def class_valued(ctx):
-    # "@type": "@vocab" without a scoped @context = range is a class, not an enumeration
-    return [k for k, v in ctx.items() if isinstance(v, dict) and v.get("@type") == "@vocab" and "@context" not in v]
+def short(iri, ctx):
+    # spdx: = the terms namespace of the context in use
+    return iri.replace(ctx["spdx"], "spdx:")
 
 
-def with_id(ctx):
-    terms = class_valued(ctx)
-    return {k: ({"@id": v["@id"], "@type": "@id"} if k in terms else v) for k, v in ctx.items()}
+def rdflib_values(doc, prop):
+    g = Graph().parse(data=json.dumps(doc), format="json-ld", base=BASE)
+    return sorted(str(o) for _, p, o in g if str(p).endswith("/" + prop))
 
 
-def show(label, ctx):
-    # example.json as is, with its @context replaced by ctx
-    g = Graph().parse(data=json.dumps({**EXAMPLE, "@context": ctx}), format="json-ld", base=BASE)
-    person = next(s for s, o in g.subject_objects(RDF.type) if str(o).endswith("/Core/Person"))
-    created_by = next(o for s, p, o in g if str(p).endswith("/Core/createdBy"))
-    print(f"   {label:13} {created_by!s:45} {'ok' if created_by == person else 'WRONG'}")
+def pyld_values(doc, prop):
+    from pyld import jsonld
+
+    nq = jsonld.to_rdf(doc, {"format": "application/n-quads", "base": BASE})
+    return sorted(line.split(" ")[2].strip("<>") for line in nq.splitlines() if f"/{prop}> " in line)
 
 
-srcs = dict(a.split("=", 1) for a in sys.argv[1:]) or URLS
+try:
+    import pyld  # noqa: F401
+
+    PROCESSORS = {"rdflib": rdflib_values, "pyld": pyld_values}
+except ImportError:
+    PROCESSORS = {"rdflib": rdflib_values}
+
+srcs = dict(a.split("=", 1) for a in sys.argv[1:]) or CONTEXTS
 for name, src in srcs.items():
     ctx = load(src)
-    print(f"{name}: {len(class_valued(ctx))} class-valued terms typed @vocab; createdBy ->")
-    show("as published", ctx)
-    show("with @id", with_id(ctx))
+    print(f"{name}:")
+    for file, prop, expected in CASES:
+        # the example as is, with its @context replaced by ctx
+        doc = {**json.loads((HERE / file).read_text()), "@context": ctx}
+        results = {p: f(doc, prop) for p, f in PROCESSORS.items()}
+        values = next(iter(results.values()))
+        agree = "agree" if all(r == values for r in results.values()) else "DISAGREE"
+        print(f"  {file} {prop} ({', '.join(results)} {agree})")
+        for v in values:
+            ok = "ok" if any(v.endswith(e) for e in expected) else "WRONG"
+            print(f"    {short(v, ctx):50} {ok}")

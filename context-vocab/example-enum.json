@@ -1,0 +1,25 @@
+{
+  "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+  "@graph": [
+    {
+      "type": "CreationInfo",
+      "@id": "_:creationinfo",
+      "specVersion": "3.0.1",
+      "created": "2026-11-18T00:00:00Z",
+      "createdBy": ["https://example.org/doc/Person"]
+    },
+    {
+      "type": "Person",
+      "spdxId": "https://example.org/doc/Person",
+      "name": "Jane Doe",
+      "creationInfo": "_:creationinfo"
+    },
+    {
+      "type": "SpdxDocument",
+      "spdxId": "https://example.org/doc/SpdxDocument",
+      "creationInfo": "_:creationinfo",
+      "profileConformance": ["core", "extension"],
+      "rootElement": ["https://example.org/doc/Person"]
+    }
+  ]
+}

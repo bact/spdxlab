@@ -4,29 +4,44 @@ SPDX-FileType: DOCUMENTATION
 SPDX-License-Identifier: CC0-1.0
 ---
 
-# SPDX 3: class-valued properties typed `@vocab` in the JSON-LD context
+# SPDX 3: JSON-LD context makes standard processors misread strings
 
 Reproduction for
-[spdx/spec-parser#204](https://github.com/spdx/spec-parser/issues/204) and
 [spdx/spdx-3-model#1167](https://github.com/spdx/spdx-3-model/issues/1167)
-(point 1), fixed by
-[spdx/spec-parser#205](https://github.com/spdx/spec-parser/pull/205).
+(point 1),
+[spdx/spec-parser#204](https://github.com/spdx/spec-parser/issues/204) and
+[spdx/spdx-3-model#1477](https://github.com/spdx/spdx-3-model/issues/1477).
+Fix: bact/spec-parser branch
+[`type-id-class`](https://github.com/bact/spec-parser/tree/type-id-class).
 
-## The problem in one paragraph
+## The problem
 
-The JSON-LD context gives every object property `"@type": "@vocab"`.
-For enumerations that is intended: each has a scoped `@vocab`, so
-`"algorithm": "sha256"` expands to `…/HashAlgorithm/sha256`.
-For properties whose range is a class (`createdBy`, `from`, `to`, `element`,
-…) it is wrong: with `@vocab` coercion, a string value is first matched
-against the context's terms. A reference to an element whose id is also a
-term name, such as `"Person"`, expands to the SPDX class IRI `…/Core/Person`
-instead of the element. With `"@type": "@id"` it resolves against the
-document base, as intended.
+The SPDX 3 spec says SPDX 3 JSON "may be parsed … using standard JSON-LD
+libraries", and that SPDX data can be serialized in any RDF format. Standard
+JSON-LD processors are what RDF tools use to read it: rdflib and pyld
+(Python), Apache Jena with Titanium (Java), jsonld.js (JavaScript).
 
-## The example document
+With the published context, these processors read some strings differently
+from what SPDX means. Both cases have one cause: a string value is first
+matched against the top-level context terms.
 
-[example.json](example.json) is a plain SPDX 3.0.1 JSON document:
+1. **Element references.** The 93 class-valued properties (`createdBy`,
+   `from`, `to`, `element`, …) are typed `"@type": "@vocab"`. A reference
+   whose id is also a term name, such as `"Person"`, expands to the SPDX class
+   `…/Core/Person` instead of the element. JSON-LD 1.1 §4.2.3 warns about
+   this: IRI values are "typically considered to be document-relative".
+2. **Enumeration values.** An entry named like a top-level term expands to
+   that term: `profileConformance: "extension"` gives the property
+   `…/Core/extension`, not `…/ProfileIdentifierType/extension`. Same for
+   `relationshipType: "createdBy"` and `externalIdentifierType:
+   "requirementUID"` in 3.1-dev.
+
+## The example documents
+
+Both use base `https://example.org/doc/`.
+
+[example.json](example.json): `createdBy` refers to the `Person` element by
+its relative `spdxId`, so it should point to `https://example.org/doc/Person`.
 
 ```json
 {
@@ -49,67 +64,105 @@ document base, as intended.
 }
 ```
 
-`createdBy` refers to the `Person` element by its `spdxId`. Read with base
-`https://example.org/doc/`, that element is `https://example.org/doc/Person`,
-so `createdBy` should point there (`ok` below). Any JSON-LD processor shows
-where it points instead; the script below is only a shortcut.
+[example-enum.json](example-enum.json): an SpdxDocument that conforms to the
+`core` and `extension` profiles; `profileConformance` should give two
+`ProfileIdentifierType` entries.
 
-## See it with published files (seconds)
-
-| Name | URL |
-| --- | --- |
-| 3.0.1 | <https://spdx.org/rdf/3.0.1/spdx-context.jsonld> |
-| 3.1-dev | <https://spdx.github.io/spdx-spec/v3.1-dev/rdf/spdx-context.jsonld> |
-
-```sh
-cd context-vocab
-python3 -m venv venv && venv/bin/pip install rdflib
-venv/bin/python quick.py                 # published contexts
-venv/bin/python quick.py NAME=CONTEXT ... # local or other contexts
+```json
+{
+  "type": "SpdxDocument",
+  "spdxId": "https://example.org/doc/SpdxDocument",
+  "creationInfo": "_:creationinfo",
+  "profileConformance": ["core", "extension"],
+  "rootElement": ["https://example.org/doc/Person"]
+}
 ```
-
-`quick.py` reads `example.json` unchanged except for its `@context`, which
-it replaces with each context, first as published, then with the
-class-valued terms switched to `"@type": "@id"`, as
-[spdx/spec-parser#205](https://github.com/spdx/spec-parser/pull/205)
-generates.
-
-Output (contexts from spdx/spdx-spec `gh-pages`, 2026-11-18):
-
-```text
-3.0.1: 37 class-valued terms typed @vocab; createdBy ->
-   as published  https://spdx.org/rdf/3.0.1/terms/Core/Person  WRONG
-   with @id      https://example.org/doc/Person                ok
-3.1-dev: 93 class-valued terms typed @vocab; createdBy ->
-   as published  https://spdx.org/rdf/3/terms/Core/Person      WRONG
-   with @id      https://example.org/doc/Person                ok
-```
-
-Absolute IRIs, and relative ids that are not term names (e.g. `"agent-1"`),
-resolve the same either way; only ids that match a term name change meaning.
 
 ## Validity
 
-`example.json` is not a valid SPDX 3 document, on purpose. The SPDX 3 JSON
-Schema allows only absolute IRIs (`^(?!_:).+:.+`) or blank nodes (`_:…`) as
-`spdxId` and as references, so both `"Person"` strings fail it
-(spdx3-validate 0.0.7, SPDX 3.0.1). With absolute IRIs the document is valid,
-and `@vocab` and `@id` then give the same result.
+- `example-enum.json` passes the SPDX 3.0.1 JSON Schema, yet fails SHACL
+  (spdx3-validate 0.0.7): `extension` is read as the property
+  `Core/extension`, which is not a `ProfileIdentifierType`. A valid document
+  is rejected only because of the context.
+- `example.json` fails the JSON Schema on purpose: the schema allows only
+  absolute IRIs (`^(?!_:).+:.+`) or blank nodes as ids and references. It is
+  still valid JSON-LD that any RDF tool may produce or consume, and SHACL
+  cannot catch the relative `spdxId`: `spdxId` is an alias of `@id`, so it is
+  resolved before the RDF graph exists.
 
-It is still valid JSON-LD, and SPDX data is RDF: the spec allows any RDF
-serialization, and says SPDX 3 JSON may be parsed with standard JSON-LD
-libraries. A generic JSON-LD or RDF consumer reads such a document as shown
-above. SHACL cannot catch the relative `spdxId`: `spdxId` is an alias of
-`@id`, so it is resolved against the base before the RDF graph exists. Here
-SHACL fails only because `createdBy` points to the class `…/Core/Person`,
-which is not an `Agent`.
+## See it (seconds)
+
+```sh
+cd context-vocab
+python3 -m venv venv && venv/bin/pip install rdflib pyld
+venv/bin/python quick.py                 # published 3.0.1, 3.1-dev, fixed
+venv/bin/python quick.py NAME=CONTEXT ... # local or other contexts
+```
+
+`quick.py` reads each example unchanged except for its `@context`, then
+prints what `createdBy` and `profileConformance` expand to (`spdx:` is the
+terms namespace of the context in use). Contexts:
+
+| Name | Context |
+| --- | --- |
+| 3.0.1 | <https://spdx.org/rdf/3.0.1/spdx-context.jsonld> |
+| 3.1-dev | <https://spdx.github.io/spdx-spec/v3.1-dev/rdf/spdx-context.jsonld> |
+| fixed | [fixed/spdx-context.jsonld](fixed/spdx-context.jsonld) |
+
+Output (2026-11-18):
+
+```text
+3.0.1:
+  example.json createdBy (rdflib, pyld agree)
+    spdx:Core/Person                                   WRONG
+  example-enum.json profileConformance (rdflib, pyld agree)
+    spdx:Core/ProfileIdentifierType/core               ok
+    spdx:Core/extension                                WRONG
+3.1-dev:
+  example.json createdBy (rdflib, pyld agree)
+    spdx:Core/Person                                   WRONG
+  example-enum.json profileConformance (rdflib, pyld agree)
+    spdx:Core/ProfileIdentifierType/core               ok
+    spdx:Core/extension                                WRONG
+fixed:
+  example.json createdBy (rdflib, pyld agree)
+    https://example.org/doc/Person                     ok
+  example-enum.json profileConformance (rdflib, pyld agree)
+    spdx:Core/ProfileIdentifierType/core               ok
+    spdx:Core/ProfileIdentifierType/extension          ok
+```
+
+The same documents and contexts give identical results with
+Apache Jena 5.2.0 (Titanium JSON-LD 1.4.1, Java) and jsonld.js 8.3.3
+(JavaScript): this is how JSON-LD 1.1 works, not a quirk of one library.
+
+## The fix
+
+`fixed/spdx-context.jsonld` is built by bact/spec-parser `type-id-class`
+from spdx/spdx-3-model 44542aa (develop 25267e7 fails earlier, on
+`/Core/Modality`). The fix changes only the context generator:
+
+- Class-valued terms: `"@type": "@vocab"` → `"@type": "@id"`. References
+  resolve against the document base, as JSON-LD intends.
+- Enumerations keep their scoped `@vocab`; entries that share a name with a
+  top-level term are mapped explicitly in that scoped context. JSON-LD 1.1
+  §4.1.11 lets property-scoped contexts override even `@protected` terms.
+- The five spec individuals (`NoneElement`, `NoAssertionElement`,
+  `SpdxOrganization`, `NoneLicense`, `NoAssertionLicense`) get no context
+  term, so they are written as IRIs or compact IRIs:
+  `spdx:Core/SpdxOrganization`, `spdx:ExpandedLicensing/NoneLicense`. This
+  form is already schema-valid in 3.0.1. The bare names
+  (`"SpdxOrganization"`) are not valid under the fixed context.
 
 ## Notes
 
-- A term is counted as class-valued when it has `"@type": "@vocab"` and no
-  scoped `@context`. In 3.1-dev all 93 have a class range in
-  `spdx-model.ttl`; none is an enumeration.
-- Enumerations keep `@vocab`. Their own issue (any string, including a typo,
-  expands into the SPDX namespace) is
-  [spdx/spdx-3-model#1167](https://github.com/spdx/spdx-3-model/issues/1167)
-  point 2 and is not covered here.
+- A document stays valid against the version its `@context` names; the 3.0.x
+  contexts are frozen. Moving a document to 3.1 already changes every term
+  IRI (`…/3.0.1/terms/…` to `…/3/terms/…`); rewriting bare individual names
+  is one more mechanical step.
+- Absolute IRIs, compact IRIs and blank nodes expand the same with `@vocab`
+  and `@id`, so references that are valid today keep their meaning.
+- Any string in an enumeration, including a typo, still expands into the
+  SPDX namespace
+  ([spdx/spdx-3-model#1167](https://github.com/spdx/spdx-3-model/issues/1167)
+  point 2); not covered here.
