@@ -33,8 +33,9 @@ matched against the top-level context terms.
    A schema-valid document is affected.
 2. **Element references.** The 93 class-valued properties (`createdBy`,
    `from`, `to`, `element`, …) are typed `"@type": "@vocab"`. A reference
-   whose id is also a term name, such as `"Person"`, expands to the SPDX class
-   `…/Core/Person` instead of the element. JSON-LD 1.1 §4.2.3 warns about
+   written as a relative IRI, such as `"Person"`, should resolve against the
+   document base (`<base>Person`). With `@vocab` it is first matched as a term
+   and expands to the SPDX class `…/Core/Person` instead. JSON-LD 1.1 §4.2.3 warns about
    this: IRI values are "typically considered to be document-relative".
    This needs a relative id, which the SPDX JSON Schema rejects; it is still
    valid JSON-LD that RDF tools may produce.
