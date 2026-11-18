@@ -27,7 +27,7 @@ CONTEXTS = {
     "fixed": str(HERE / "fixed" / "spdx-context.jsonld"),
 }
 BASE = "https://example.org/doc/"  # where the file is published
-START = json.loads((HERE / "roundtrip-start.json").read_text())
+START = json.loads((HERE / "valid-absolute-ids.json").read_text())
 
 
 def load(src):
@@ -49,16 +49,16 @@ def canon(doc, ctx):
 def validate(path, name):
     # spdx3-validate knows the published 3.0.x contexts only
     if name != "3.0.1":
-        return "not run"
+        return ""
     cmd = shlex.split(os.environ.get("SPDX3_VALIDATE", "spdx3-validate"))
     if not shutil.which(cmd[0]):
-        return "not run"
+        return ""
     r = subprocess.run([*cmd, "-q", "-j", str(path)], capture_output=True, text=True, check=False)
     first = next((ln.split(": ", 1)[1] for ln in (r.stdout + r.stderr).splitlines() if "does not match" in ln), "")
-    return "valid" if r.returncode == 0 else f"INVALID {first}"
+    return "\n              spdx3-validate: " + ("valid" if r.returncode == 0 else f"INVALID {first}")
 
 
-def created_by(doc, ctx, prop):
+def expand(doc, ctx, prop):
     nq = jsonld.to_rdf(with_ctx(doc, ctx), {"format": "application/n-quads", "base": BASE})
     return [ln.split(" ")[2] for ln in nq.splitlines() if f"/{prop}> " in ln]
 
@@ -73,8 +73,7 @@ for name, src in srcs.items():
 
     # step 1: valid SPDX 3 JSON (absolute ids)
     (d / "step1.json").write_text(json.dumps(START, indent=2))
-    print("  step1.json  valid SPDX 3 JSON (absolute ids)")
-    print(f"              spdx3-validate: {validate(d / 'step1.json', name)}")
+    print(f"  step1.json  valid SPDX 3 JSON (absolute ids){validate(d / 'step1.json', name)}")
 
     # step 2: read as RDF, save as Turtle
     g = Graph().parse(data=json.dumps(with_ctx(START, ctx)), format="json-ld")
@@ -87,8 +86,7 @@ for name, src in srcs.items():
     step3["@context"] = START["@context"]
     (d / "step3.json").write_text(json.dumps(step3, indent=2))
     same = canon(step3, ctx) == canon(START, ctx)
-    print(f"  step3.json  JSON-LD again; same RDF as step1: {same}")
-    print(f"              spdx3-validate: {validate(d / 'step3.json', name)}")
+    print(f"  step3.json  JSON-LD again; same RDF as step1: {same}{validate(d / 'step3.json', name)}")
 
     # step 4: a plain JSON tool adds an Annotation about the Person, copying its spdxId as written
     person = next(n for n in step3["@graph"] if n.get("type") == "Person")
@@ -105,5 +103,5 @@ for name, src in srcs.items():
         }
     )
     (d / "step4.json").write_text(json.dumps(step4, indent=2))
-    subject = created_by(step4, ctx, "subject")[0].strip("<>").replace(ctx["@context"]["spdx"], "spdx:")
+    subject = expand(step4, ctx, "subject")[0].strip("<>").replace(ctx["@context"]["spdx"], "spdx:")
     print(f"  step4.json  Annotation subject {person['spdxId']!r} -> {subject}")
