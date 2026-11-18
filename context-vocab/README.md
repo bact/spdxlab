@@ -19,10 +19,40 @@ For enumerations that is intended: each has a scoped `@vocab`, so
 `"algorithm": "sha256"` expands to `…/HashAlgorithm/sha256`.
 For properties whose range is a class (`createdBy`, `from`, `to`, `element`,
 …) it is wrong: with `@vocab` coercion, a string value is first matched
-against the context's terms. An element id that is also a term name, such as
-`"Tool"`, expands to the SPDX class IRI `…/Core/Tool` instead of being
-resolved against the document base. With `"@type": "@id"` it resolves as an
-IRI, as intended.
+against the context's terms. A reference to an element whose id is also a
+term name, such as `"Person"`, expands to the SPDX class IRI `…/Core/Person`
+instead of the element. With `"@type": "@id"` it resolves against the
+document base, as intended.
+
+## The example document
+
+[example.json](example.json) is a plain SPDX 3.0.1 JSON document:
+
+```json
+{
+  "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+  "@graph": [
+    {
+      "type": "CreationInfo",
+      "@id": "_:creationinfo",
+      "specVersion": "3.0.1",
+      "created": "2026-11-18T00:00:00Z",
+      "createdBy": ["Person"]
+    },
+    {
+      "type": "Person",
+      "spdxId": "Person",
+      "name": "Jane Doe",
+      "creationInfo": "_:creationinfo"
+    }
+  ]
+}
+```
+
+`createdBy` refers to the `Person` element by its `spdxId`. Read with base
+`https://example.org/doc/`, that element is `https://example.org/doc/Person`,
+so `createdBy` should point there (`ok` below). Any JSON-LD processor shows
+where it points instead; the script below is only a shortcut.
 
 ## See it with published files (seconds)
 
@@ -38,31 +68,25 @@ venv/bin/python quick.py                 # published contexts
 venv/bin/python quick.py NAME=CONTEXT ... # local or other contexts
 ```
 
-The test document, with base `https://example.org/doc/`:
-
-```json
-{"@id": "_:ci", "type": "CreationInfo", "createdBy": "Tool"}
-```
-
-`"Tool"` stands for an element whose id is `Tool`, relative to the base.
+`quick.py` reads `example.json` unchanged except for its `@context`, which
+it replaces with each context, first as published, then with the
+class-valued terms switched to `"@type": "@id"`, as
+[spdx/spec-parser#205](https://github.com/spdx/spec-parser/pull/205)
+generates.
 
 Output (contexts from spdx/spdx-spec `gh-pages`, 2026-11-18):
 
 ```text
-3.0.1: 37 class-valued terms typed @vocab
-   as published  createdBy "Tool" -> https://spdx.org/rdf/3.0.1/terms/Core/Tool
-   with @id      createdBy "Tool" -> https://example.org/doc/Tool
-3.1-dev: 93 class-valued terms typed @vocab
-   as published  createdBy "Tool" -> https://spdx.org/rdf/3/terms/Core/Tool
-   with @id      createdBy "Tool" -> https://example.org/doc/Tool
+3.0.1: 37 class-valued terms typed @vocab; createdBy ->
+   as published  https://spdx.org/rdf/3.0.1/terms/Core/Person  WRONG
+   with @id      https://example.org/doc/Person                ok
+3.1-dev: 93 class-valued terms typed @vocab; createdBy ->
+   as published  https://spdx.org/rdf/3/terms/Core/Person      WRONG
+   with @id      https://example.org/doc/Person                ok
 ```
 
-"with @id" is the same context with the class-valued terms switched to
-`"@type": "@id"`, as
-[spdx/spec-parser#205](https://github.com/spdx/spec-parser/pull/205)
-generates. Absolute IRIs and relative ids that are not term names (e.g.
-`"agent-1"`) resolve the same either way; only values that match a term
-name change meaning.
+Absolute IRIs, and relative ids that are not term names (e.g. `"agent-1"`),
+resolve the same either way; only ids that match a term name change meaning.
 
 ## Notes
 
