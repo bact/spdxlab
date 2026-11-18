@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Arthit Suriyawongkul
+# SPDX-License-Identifier: CC0-1.0
+#
+# Valid: providesSupportFor needs "to" to be an Artifact; a Package is one.
+# (Same for "from": an Organization is an Agent.)
+# The model's SPARQL constraint checks this with rdf:type/rdfs:subClassOf*,
+# which needs the class hierarchy in the data graph.
+# Expected: no results.
+
+@prefix c: <https://spdx.org/rdf/3/terms/Core/> .
+@prefix s: <https://spdx.org/rdf/3/terms/Software/> .
+@prefix r: <https://spdx.org/rdf/3/terms/Core/RelationshipType/> .
+@prefix st: <https://spdx.org/rdf/3/terms/Core/SupportType/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix ex: <https://example.org/doc/> .
+
+ex:Org a c:Organization ; c:creationInfo _:ci ; c:name "Example Org" .
+_:ci a c:CreationInfo ;
+    c:specVersion "3.1" ;
+    c:created "2026-11-18T00:00:00Z"^^xsd:dateTimeStamp ;
+    c:createdBy ex:Org .
+
+ex:Pkg a s:Package ; c:creationInfo _:ci ; c:name "pkg" .
+ex:Support a c:SupportRelationship ; c:creationInfo _:ci ;
+    c:from ex:Org ; c:to ex:Pkg ; c:relationshipType r:providesSupportFor ;
+    c:supportLevel st:development .

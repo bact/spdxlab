@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 Arthit Suriyawongkul
+# SPDX-License-Identifier: CC0-1.0
+#
+# Valid: Person, Package, File, Relationship and Hash, all using subclasses
+# of the classes the shapes name (Element, Agent, Artifact, ...).
+# Invalid: ex:BadPkg has no creationInfo (required on Element).
+# Expected: exactly one result, BadPkg creationInfo minCount.
+
+@prefix c: <https://spdx.org/rdf/3/terms/Core/> .
+@prefix s: <https://spdx.org/rdf/3/terms/Software/> .
+@prefix h: <https://spdx.org/rdf/3/terms/Core/HashAlgorithm/> .
+@prefix r: <https://spdx.org/rdf/3/terms/Core/RelationshipType/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix ex: <https://example.org/doc/> .
+
+ex:Person a c:Person ; c:creationInfo _:ci ; c:name "Jane Doe" .
+_:ci a c:CreationInfo ;
+    c:specVersion "3.1" ;
+    c:created "2026-11-18T00:00:00Z"^^xsd:dateTimeStamp ;
+    c:createdBy ex:Person .
+
+ex:Pkg a s:Package ; c:creationInfo _:ci ; c:name "pkg" ;
+    c:verifiedUsing [ a c:Hash ; c:algorithm h:sha256 ;
+        c:hashValue "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" ] .
+ex:File a s:File ; c:creationInfo _:ci ; c:name "a.c" .
+ex:Rel a c:Relationship ; c:creationInfo _:ci ;
+    c:from ex:Pkg ; c:to ex:File ; c:relationshipType r:contains .
+
+ex:BadPkg a s:Package ; c:name "no creationInfo" .
