@@ -25,8 +25,8 @@ CONTEXTS = {
 BASE = "https://example.org/doc/"
 # file, property, expected IRI ending of each value
 CASES = [
-    ("example-enum.json", "profileConformance", ["ProfileIdentifierType/core", "ProfileIdentifierType/extension"]),
-    ("example.json", "createdBy", ["doc/Person"]),
+    ("enum-value-matches-term.json", "profileConformance", ["ProfileIdentifierType/core", "ProfileIdentifierType/extension"]),
+    ("relative-ref-matches-term.json", "createdBy", ["doc/Person"]),
 ]
 
 

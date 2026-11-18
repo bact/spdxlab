@@ -44,9 +44,9 @@ matched against the top-level context terms.
 
 Both use base `https://example.org/doc/`.
 
-[example-enum.json](example-enum.json): an SpdxDocument that conforms to the
-`core` and `extension` profiles; `profileConformance` should give two
-`ProfileIdentifierType` entries.
+[enum-value-matches-term.json](enum-value-matches-term.json): an
+SpdxDocument that conforms to the `core` and `extension` profiles;
+`profileConformance` should give two `ProfileIdentifierType` entries.
 
 ```json
 {
@@ -58,8 +58,9 @@ Both use base `https://example.org/doc/`.
 }
 ```
 
-[example.json](example.json): `createdBy` refers to the `Person` element by
-its relative `spdxId`, so it should point to `https://example.org/doc/Person`.
+[relative-ref-matches-term.json](relative-ref-matches-term.json):
+`createdBy` refers to the `Person` element by its relative `spdxId`, so it
+should point to `https://example.org/doc/Person`.
 
 ```json
 {
@@ -84,12 +85,12 @@ its relative `spdxId`, so it should point to `https://example.org/doc/Person`.
 
 ## Validity
 
-- `example-enum.json` passes the SPDX 3.0.1 JSON Schema, yet fails SHACL
-  (spdx3-validate 0.0.7): `extension` is read as the property
+- `enum-value-matches-term.json` passes the SPDX 3.0.1 JSON Schema, yet fails
+  SHACL (spdx3-validate 0.0.7): `extension` is read as the property
   `Core/extension`, which is not a `ProfileIdentifierType`. A valid document
   is rejected only because of the context.
-- `example.json` fails the JSON Schema on purpose: the schema allows only
-  absolute IRIs (`^(?!_:).+:.+`) or blank nodes as ids and references. It is
+- `relative-ref-matches-term.json` fails the JSON Schema on purpose: the
+  schema allows only absolute IRIs (`^(?!_:).+:.+`) or blank nodes as ids and references. It is
   still valid JSON-LD that any RDF tool may produce or consume, and SHACL
   cannot catch the relative `spdxId`: `spdxId` is an alias of `@id`, so it is
   resolved before the RDF graph exists.
@@ -117,22 +118,22 @@ Output (2026-11-18):
 
 ```text
 3.0.1:
-  example-enum.json profileConformance (rdflib, pyld agree)
+  enum-value-matches-term.json profileConformance (rdflib, pyld agree)
     spdx:Core/ProfileIdentifierType/core               ok
     spdx:Core/extension                                WRONG
-  example.json createdBy (rdflib, pyld agree)
+  relative-ref-matches-term.json createdBy (rdflib, pyld agree)
     spdx:Core/Person                                   WRONG
 3.1-dev:
-  example-enum.json profileConformance (rdflib, pyld agree)
+  enum-value-matches-term.json profileConformance (rdflib, pyld agree)
     spdx:Core/ProfileIdentifierType/core               ok
     spdx:Core/extension                                WRONG
-  example.json createdBy (rdflib, pyld agree)
+  relative-ref-matches-term.json createdBy (rdflib, pyld agree)
     spdx:Core/Person                                   WRONG
 fixed:
-  example-enum.json profileConformance (rdflib, pyld agree)
+  enum-value-matches-term.json profileConformance (rdflib, pyld agree)
     spdx:Core/ProfileIdentifierType/core               ok
     spdx:Core/ProfileIdentifierType/extension          ok
-  example.json createdBy (rdflib, pyld agree)
+  relative-ref-matches-term.json createdBy (rdflib, pyld agree)
     https://example.org/doc/Person                     ok
 ```
 
